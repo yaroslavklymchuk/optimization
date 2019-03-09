@@ -31,6 +31,93 @@ def gessian(func, h, params):
     
     return hesse_matrix
 
+def fib(n):
+    """
+    calculates the element of fibonacci sequence by given number
+    """
+    if (n==1 or n==2):
+        return 1
+    else:
+        return fib(n-2)+fib(n-1)
+    
+def get_number_fibonacci(start, end, eps):
+    for n in range(1, 100000):
+        if (fib(n)>=(end-start)/eps):
+            break
+    return n
+
+
+def fibonacci_method(func, start, end, eps):
+    """
+    fibonacci method to minimize a function of one argument
+    """
+    n = get_number_fibonacci(start, end, eps)
+    fn = fib(n)
+    x1 = start + (fib(n-2) * (end-start))/fib(n)
+    x2 = start + (fib(n-1) * (end-start))/fib(n)
+    
+    while (end-start>eps):
+        if func(x1)<=func(x2):
+            end = x2
+            x2 = x1
+            x1 = start + (fib(n-3) * (end-start))/fib(n)
+        else:
+            start = x1
+            x1 = x2
+            x2 = start + (fib(n-2) * (end-start))/fib(n)
+    return (start+end)/2
+
+
+def golden_ratio_method(func, start, end, eps):
+    """
+    golden ration method to minimize a function of one argument
+    """
+    fi = (1+pow(5.0, 0.5))/2
+    
+    x1 = end-(end-start)/fi
+    x2 = start + (end-start)/fi
+    
+    while((end-start)/2>=eps):
+        if func(x1)>=func(x2):
+            start = x1
+            x1 = x2
+            x2 = end - x1 + start
+        else:
+            end = x2
+            x2 = x1
+            x1 = start + end - x2
+    return (start + end)/2
+
+
+def gradient_descend_swift(func, params, eps, method, start=0, end=1):
+    """
+    swift gradient descent method to minimize a given function with given method (fibonacci or golden ratio)
+    """
+    qty_steps=1
+    
+    dot0 = np.array(params)
+    steps = [dot0]
+    f_alpha = lambda alpha: func(*(dot0+alpha*gradient(func, eps, dot0.tolist())))
+    step = method(f_alpha, start, end, eps)
+    dot1 = dot0-step*gradient(func, eps, dot0.tolist())
+    
+    while(np.linalg.norm(dot1-dot0)>eps):
+        
+        dot0 = dot1
+
+        steps.append(dot0)
+        
+        f_alpha = lambda alpha: func(*(dot0+alpha*gradient(func, eps, dot0.tolist())))
+        step = method(f_alpha, start, end, eps)
+        dot1 = dot0 - step*gradient(func, eps, dot0.tolist())
+        qty_steps+=1
+
+        print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
+                                                                                      dot1, func(*dot1)))
+    
+    print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
+    
+    return steps
 
 
 def gradient_descent_constant_step(func, params, eps, step):
@@ -65,24 +152,31 @@ def gradient_descent(func, params, eps):
     gradient descent method to minimize a given function
     """
     qty_steps=1
-    step=0.001 # step can be chosen in range(0.0001, 0.7)
+    step=0.0015 # step can be chosen in range(0.0001, 0.7)
     
     dot0 = np.array(params)
     steps = [dot0]
+    f0 = func(*dot0)
+    while(func(*(dot0-step*gradient(func, eps, dot0.tolist())))<f0):
+        step*=2
+    while(func(*(dot0-step*gradient(func, eps, dot0.tolist())))>=f0):
+        step*=0.5
+        
     dot1 = dot0-step*gradient(func, eps, dot0.tolist())
     
-    while(np.linalg.norm(dot1-dot0)>eps):
+    while(np.linalg.norm(gradient(func, eps, dot0.tolist()))>eps):
         f0 = func(*dot0)
         while(func(*(dot0-step*gradient(func, eps, dot0.tolist())))<f0):
             step*=2
-        while(func(*(dot0-step*gradient(func, eps, dot0.tolist())))>f0):
-            step*=1/2
+        while(func(*(dot0-step*gradient(func, eps, dot0.tolist())))>=f0):
+            step*=0.5
         
+        #print("V0: ", dot0, dot1, gradient(func, eps, dot0.tolist()), np.linalg.norm(dot1-dot0))
         dot0 = dot1
         dot1 = dot0-step*gradient(func, eps, dot0.tolist())
         steps.append(dot0)
-        
         qty_steps+=1
+        #print("V1: ", dot0, dot1, gradient(func, eps, dot0.tolist()), np.linalg.norm(dot1-dot0))
         
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps,
                                                                                       dot1, func(*dot1)))
@@ -90,7 +184,6 @@ def gradient_descent(func, params, eps):
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
     return steps
-
 
 
 def newton_method(func, params, eps):
