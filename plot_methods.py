@@ -1,4 +1,6 @@
 import numpy as np
+import itertools
+import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 from plotly.offline import iplot, plot
 
@@ -25,15 +27,28 @@ def makeData(func):
     return xgrid, ygrid, zgrid
 
     
-def plot_function(func, title, only_save=False):
+def plot_function(functions, title, only_save=False):
     """
     plots given function with setting the title
+    """
+    #data = list(itertools.chain(*[[go.Surface(x=x, y=y, z=z) for x, y, z in makeData(func)] for func in functions]))
+    data = []
+    for i,func in enumerate(functions):
+        x, y, z = makeData(func)
+        
+        if i>0:
+            surface = go.Surface(x=x, y=y, z=z, showscale=False)
+        else:
+            surface = go.Surface(x=x, y=y, z=z)
+        data.append(surface)
+    
     """
     x, y, z = makeData(func)
     
     surface = go.Surface(x=x, y=y, z=z)
     
     data = [surface]
+    """
 
     layout = go.Layout(
         title=title,
