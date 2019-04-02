@@ -1,5 +1,5 @@
 import numpy as np
-
+import itertools
 
 def gradient(func, h, params):
     """
@@ -15,13 +15,12 @@ def gessian(func, h, params):
     calculates a gessian of a given function by numerical methods
     """
     hesse_matrix = np.zeros((len(params), len(params)))
-    for i in range(len(params)):
-        for j in range(i, len(params)):
-            if i==j:
-                hesse_matrix[i][j] = (func(*(params[:i] + [params[i]+h] + params[i+1:]))-\
+    for i,j in itertools.product(range(len(params)),range(len(params))):
+        if i==j:
+            hesse_matrix[i][j] = (func(*(params[:i] + [params[i]+h] + params[i+1:]))-\
                                       2*func(*params)+func(*(params[:i] + [params[i]-h] + params[i+1:])))/(pow(h,2))
-            else:
-                hesse_matrix[i][j]=((func(*(params[:i]+[params[i]+h]+params[i+1:j]+[params[j]+h]+params[j+1:]))-\
+        else:
+            hesse_matrix[i][j]=((func(*(params[:i]+[params[i]+h]+params[i+1:j]+[params[j]+h]+params[j+1:]))-\
                                    func(*(params[:i]+[params[i]-h]+params[i+1:j]+[params[j]+h]+params[j+1:])))-\
                                    (func(*(params[:i]+[params[i]+h]+params[i+1:j]+[params[j]-h]+params[j+1:]))-\
                                    func(*(params[:i]+[params[i]-h]+params[i+1:j]+[params[j]-h]+params[j+1:])))
@@ -30,6 +29,48 @@ def gessian(func, h, params):
             hesse_matrix[i][j]=hesse_matrix[j][i]
     
     return hesse_matrix
+
+def hyperplane_projection(params, args):
+    """
+    calculates projection for hyperplane
+    """
+    beta, coefs = args
+    return np.array(params) + np.dot((beta - np.dot(np.array(coefs), np.array(params))), 
+                                     np.array(coefs)/pow(np.linalg.norm(np.array(coefs)), 2))
+
+def sphere_projection(params, args):
+    """
+    calculates projection for sphere
+    """
+    radius, center = args
+    return np.array(center)+ radius*((np.array(params)-np.array(center)
+                                    )/np.linalg.norm(np.array(params)-np.array(center)))
+
+def subspace_pojection(params, args):
+    """
+    calculates projection for subspace
+    """
+    beta, coefs = args
+    return np.array(params) + np.dot(max(0, beta-np.dot(np.array(coefs), np.array(params))), 
+                                         np.array(coefs)/pow(np.linalg.norm(np.array(coefs)), 2))
+
+def poliedr_projection(params, args):
+    """
+    calculates projection for poliedr
+    """
+    left, right = args
+    result = np.array([el for el in range(len(params))])
+    result[np.where(np.array(params)<np.array(left))[0]] = np.array(left)[np.where(np.array(params)<np.array(left))[0]]
+    result[np.where((np.array(left)<np.array(params)) & (np.array(params)<np.array(right)))[0]] = np.array(params)[
+        np.where((np.array(left)<np.array(params)) & (np.array(params)<np.array(right)))[0]]
+    result[np.where(np.array(right)<np.array(params))[0]] = np.array(right)[np.where(np.array(right)<np.array(params))[0]]
+    return result
+
+def non_negative_orthant_projection(params, args=None):
+    """
+    calculates projection for non_negative orthant
+    """
+    return np.array([max(0, el) for el in params])
 
 def fib(n):
     """
@@ -89,7 +130,7 @@ def golden_ratio_method(func, start, end, eps):
     return (start + end)/2
 
 
-def gradient_descend_swift(func, params, eps, method, start=0, end=1):
+def gradient_descent_swift(func, params, eps, method, start=0, end=1):
     """
     swift gradient descent method to minimize a given function with given method (fibonacci or golden ratio)
     """
@@ -196,6 +237,72 @@ def newton_method(func, params, eps):
 
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
                                                                                    dot1, func(*dot1)))
+    print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
+    
+    return steps
+
+
+def gradient_projection(func, eps, projection_function, params, projection_func_args):
+    """
+    gradient projection method to minimize a target function with given projection function
+    """
+    qty_steps=1
+    step = 0.0015
+    
+    dot0 = np.array(params)
+    steps = [dot0]
+    dot1 = projection_function(dot0-step*gradient(func, eps, dot0.tolist()), 
+                                 projection_func_args)
+    
+    while(np.linalg.norm(dot1-dot0)>=eps):
+    
+        dot0 = dot1
+        dot1 = projection_function(dot0-step*gradient(func, eps, dot0.tolist()), 
+                                 projection_func_args)
+        steps.append(dot0)
+        qty_steps+=1
+        
+        print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps,
+                                                                                      dot1, func(*dot1)))
+    
+    print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
+    
+    return steps
+
+
+def conjucate_gradients_method(func, params, eps):
+    """
+    general conjucate gradients method to minimize a given function
+    """
+    qty_steps=1
+    step=0.0015
+    
+    dot0 = np.array(params)
+    steps = [dot0]
+
+    h = -gradient(func, eps, dot0.tolist())
+    dot1 = dot0+step*h
+    prev = h
+    prev_grad = -gradient(func, eps, dot0.tolist())
+    
+    while(np.linalg.norm(dot1-dot0)>eps):
+        
+        dot0 = dot1
+        
+        h = -gradient(func, eps, dot0.tolist())+\
+            np.dot(prev, np.dot(-gradient(func, eps, dot0.tolist()),
+                  -gradient(func, eps, dot0.tolist()))/np.dot(prev_grad, prev_grad))
+        dot1 = dot0+step*h
+        prev = h
+        prev_grad = -gradient(func, eps, dot0.tolist())
+        
+        steps.append(dot0)
+        
+        qty_steps+=1
+
+        print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
+                                                                                      dot1, func(*dot1)))
+    
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
     return steps
