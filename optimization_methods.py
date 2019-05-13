@@ -247,16 +247,26 @@ def gradient_projection(func, eps, projection_function, params, projection_func_
     gradient projection method to minimize a target function with given projection function
     """
     qty_steps=1
-    step = 0.0015
+    step = 1
     
     dot0 = np.array(params)
     steps = [dot0]
+    
+    f_alpha = lambda alpha: func(*(dot0-alpha*gradient(func, eps, dot0.tolist())))
+        
+    step = golden_ratio_method(f_alpha, 0, step, eps)
+    
     dot1 = projection_function(dot0-step*gradient(func, eps, dot0.tolist()), 
                                  projection_func_args)
     
     while(np.linalg.norm(dot1-dot0)>=eps):
     
         dot0 = dot1
+        
+        f_alpha = lambda alpha: func(*(dot0-alpha*gradient(func, eps, dot0.tolist())))
+        
+        step = golden_ratio_method(f_alpha, 0, step, eps)
+        
         dot1 = projection_function(dot0-step*gradient(func, eps, dot0.tolist()), 
                                  projection_func_args)
         steps.append(dot0)
@@ -270,39 +280,54 @@ def gradient_projection(func, eps, projection_function, params, projection_func_
     return steps
 
 
-def conjucate_gradients_method(func, params, eps):
+def conjucate_gradients_method(func, params, eps, start=0, end=1, quadratic=True):
     """
     general conjucate gradients method to minimize a given function
     """
+    iteration_data = []
     qty_steps=1
-    step=0.0015
+    step=1
     
     dot0 = np.array(params)
     steps = [dot0]
-
     h = -gradient(func, eps, dot0.tolist())
-    dot1 = dot0+step*h
     prev = h
-    prev_grad = -gradient(func, eps, dot0.tolist())
+    prev_grad = gradient(func, eps, dot0.tolist())
     
-    while(np.linalg.norm(dot1-dot0)>eps):
+    f_alpha = lambda alpha: func(*(dot0+alpha*h))
+    step = golden_ratio_method(f_alpha, start, end, eps)
+    dot1 = dot0 + step*h
+    
+    while(np.linalg.norm(dot1 - dot0)>eps):
         
         dot0 = dot1
         
-        h = -gradient(func, eps, dot0.tolist())+\
-            np.dot(prev, np.dot(-gradient(func, eps, dot0.tolist()),
-                  -gradient(func, eps, dot0.tolist()))/np.dot(prev_grad, prev_grad))
-        dot1 = dot0+step*h
+        h = -gradient(func, eps, dot0.tolist()) + np.dot(prev,
+                        pow(np.linalg.norm(gradient(func, eps, dot0.tolist())
+                      ), 2)/pow(np.linalg.norm(prev_grad), 2))
         prev = h
-        prev_grad = -gradient(func, eps, dot0.tolist())
+        prev_grad = gradient(func, eps, dot0.tolist())
+        
+        #dot0 = dot1
+        
+        f_alpha = lambda alpha: func(*(dot0+alpha*h))
+        step = golden_ratio_method(f_alpha, start, end, eps)
+        
+        dot1 = dot0+step*h
         
         steps.append(dot0)
         
         qty_steps+=1
-
-        print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
+        
+        if not quadratic:
+            print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
                                                                                       dot1, func(*dot1)))
+        else:
+            iteration_data.append((qty_steps, dot1, func(*dot1)))
     
+    for i, el in enumerate(iteration_data[-3:]):
+        print('number of iteration: {}, current point: {}, function value: {}'.format(i+1, el[1], el[2]))
+        
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
     return steps
