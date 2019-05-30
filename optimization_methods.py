@@ -15,19 +15,20 @@ def gessian(func, h, params):
     calculates a gessian of a given function by numerical methods
     """
     hesse_matrix = np.zeros((len(params), len(params)))
-    for i,j in itertools.product(range(len(params)),range(len(params))):
-        if i==j:
-            hesse_matrix[i][j] = (func(*(params[:i] + [params[i]+h] + params[i+1:]))-\
+    for i in range(len(params)):
+        for j in range(i, len(params)):
+            if i==j:
+                hesse_matrix[i][j] = (func(*(params[:i] + [params[i]+h] + params[i+1:]))-\
                                       2*func(*params)+func(*(params[:i] + [params[i]-h] + params[i+1:])))/(pow(h,2))
-        else:
-            hesse_matrix[i][j]=((func(*(params[:i]+[params[i]+h]+params[i+1:j]+[params[j]+h]+params[j+1:]))-\
+            else:
+                hesse_matrix[i][j]=((func(*(params[:i]+[params[i]+h]+params[i+1:j]+[params[j]+h]+params[j+1:]))-\
                                    func(*(params[:i]+[params[i]-h]+params[i+1:j]+[params[j]+h]+params[j+1:])))-\
                                    (func(*(params[:i]+[params[i]+h]+params[i+1:j]+[params[j]-h]+params[j+1:]))-\
                                    func(*(params[:i]+[params[i]-h]+params[i+1:j]+[params[j]-h]+params[j+1:])))
                                    )/(4*pow(h,2))
         for j in range(i):
             hesse_matrix[i][j]=hesse_matrix[j][i]
-    
+
     return hesse_matrix
 
 def hyperplane_projection(params, args):
@@ -150,10 +151,10 @@ def gradient_descent_swift(func, params, eps, method, start=0, end=1):
         dot1 = dot0 - step*gradient(func, eps, dot0.tolist())
         dot0 = dot1
         steps.append(dot0)
+        qty_steps+=1
 
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
                                                                                       dot1, func(*dot1)))
-        qty_steps+=1
     
     print("Precision: {}".format(np.linalg.norm(gradient(func, eps, dot1.tolist()))))
     
@@ -177,10 +178,10 @@ def gradient_descent_constant_step(func, params, eps, step):
         steps.append(dot0)
 
         dot1 = dot0 - step*gradient(func, eps, dot0.tolist())
+        qty_steps+=1
 
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
                                                                                       dot1, func(*dot1)))
-        qty_steps+=1
     
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
@@ -207,11 +208,10 @@ def gradient_descent(func, params, eps):
         dot1 = dot0-step*gradient(func, eps, dot0.tolist())
         dot0 = dot1
         steps.append(dot0)
+        qty_steps+=1
         
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps,
                                                                                       dot1, func(*dot1)))
-        
-        qty_steps+=1
     
     print("Precision: {}".format(np.linalg.norm(gradient(func, eps, dot1.tolist()))))
     
@@ -234,12 +234,10 @@ def newton_method(func, params, eps):
         steps.append(dot0)
 
         dot1 = dot0 - np.dot(gradient(func, eps, dot0.tolist()), np.linalg.inv(gessian(func, eps, dot0.tolist())))
+        qty_steps+=1
 
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
                                                                                    dot1, func(*dot1)))
-        
-        qty_steps+=1
-        
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
     return steps
@@ -273,17 +271,17 @@ def gradient_projection(func, eps, projection_function, params, projection_func_
         dot1 = projection_function(dot0-step*gradient(func, eps, dot0.tolist()), 
                                  projection_func_args)
         steps.append(dot0)
+        qty_steps+=1
         
         print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps,
                                                                                       dot1, func(*dot1)))
-        qty_steps+=1
     
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
     return steps
 
 
-def conjucate_gradients_method(func, params, eps, start=0, end=1):
+def conjucate_gradients_method(func, params, eps, start=0, end=1, quadratic=True):
     """
     general conjucate gradients method to minimize a given function
     """
@@ -301,7 +299,7 @@ def conjucate_gradients_method(func, params, eps, start=0, end=1):
     step = golden_ratio_method(f_alpha, start, end, eps)
     dot1 = dot0 + step*h
     
-    while(np.linalg.norm(func(*dot1) - func(*dot0))>eps):
+    while(np.linalg.norm(dot1 - dot0)>eps):
         
         dot0 = dot1
         
@@ -320,10 +318,16 @@ def conjucate_gradients_method(func, params, eps, start=0, end=1):
         
         steps.append(dot0)
         
-
-        print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
-                                                                                      dot1, func(*dot1)))
         qty_steps+=1
+        
+        if not quadratic:
+            print('number of iteration: {}, current point: {}, function value: {}'.format(qty_steps, 
+                                                                                      dot1, func(*dot1)))
+        else:
+            iteration_data.append((qty_steps, dot1, func(*dot1)))
+    
+    for i, el in enumerate(iteration_data[-3:]):
+        print('number of iteration: {}, current point: {}, function value: {}'.format(i+1, el[1], el[2]))
         
     print("Precision: {}".format(np.linalg.norm(dot1-dot0)))
     
