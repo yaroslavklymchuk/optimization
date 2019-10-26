@@ -12,43 +12,29 @@ cufflinks.set_config_file(world_readable=True, theme='pearl', offline=True)
 
 
 
-def makeData(func):
+def makeData(func, x_range, y_range):
     """
     makes data to plot in 3D with given function
     """
-    x = np.arange (-10, 10, 0.1)
-    y = np.arange (-10, 10, 0.1)
-    xgrid, ygrid = np.meshgrid(x, y)
-
-    #zgrid = xgrid**2+2*ygrid**2+0.012*xgrid*ygrid-2*ygrid+xgrid
     
-    zgrid = func(xgrid, ygrid)
+    xgrid, ygrid = np.meshgrid(x_range, y_range)
+
+    zgrid = [[func(el, el1) for el, el1 in zip(x, y)] for x, y in zip(xgrid, ygrid)]
     
     return xgrid, ygrid, zgrid
 
     
-def plot_function(functions, title, only_save=False):
+def plot_function(func, title, x_range, y_range, only_save=False):
     """
     plots given function with setting the title
     """
-    #data = list(itertools.chain(*[[go.Surface(x=x, y=y, z=z) for x, y, z in makeData(func)] for func in functions]))
-    data = []
-    for i,func in enumerate(functions):
-        x, y, z = makeData(func)
-        
-        if i>0:
-            surface = go.Surface(x=x, y=y, z=z, showscale=False)
-        else:
-            surface = go.Surface(x=x, y=y, z=z)
-        data.append(surface)
-    
-    """
-    x, y, z = makeData(func)
+  
+    x, y, z = makeData(func, x_range, y_range)
     
     surface = go.Surface(x=x, y=y, z=z)
     
     data = [surface]
-    """
+    
 
     layout = go.Layout(
         title=title,
@@ -81,11 +67,11 @@ def plot_function(functions, title, only_save=False):
         iplot(fig, filename=title)
     
     
-def plot_contour(func, title, only_save=False):
+def plot_contour(func, title, x_range, y_range, only_save=False):
     """
     plots contour of a given function with setting a title
     """
-    x, y, z = makeData(func)
+    x, y, z = makeData(func, x_range, y_range)
     
     Z = [func(el, el1) for el, el1 in zip(x[0], y[:, 0])]
     
@@ -110,11 +96,11 @@ def plot_contour(func, title, only_save=False):
     else:
         iplot(fig, filename=title)
 
-def plot_contour_and_scatter_of_descent(func, results_of_method, title, only_save=False):
+def plot_contour_and_scatter_of_descent(func, results_of_method, title, x_range, y_range, only_save=False):
     """
     plots contour of a function and a scatter plot of the steps of the method with setting a title
     """
-    x, y, z = makeData(func)
+    x, y, z = makeData(func, x_range, y_range)
     
     Z = [func(el, el1) for el, el1 in zip(x[0], y[:, 0])]
     
